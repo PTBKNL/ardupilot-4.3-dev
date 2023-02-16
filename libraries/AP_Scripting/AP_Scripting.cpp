@@ -327,6 +327,29 @@ void AP_Scripting::restart_all()
     _stop = true;
 }
 
+/*
+  handle incoming NAMED_VALUE_FLOAT
+ */
+void AP_Scripting::handle_named_value(uint8_t sysid, uint8_t compid, const mavlink_named_value_float_t &msg)
+{
+    WITH_SEMAPHORE(named_value.sem);
+    named_value.sysid = sysid;
+    named_value.compid = compid;
+    named_value.msg = msg;
+    named_value.msg.time_boot_ms = named_value.jitter.correct_offboard_timestamp_msec(named_value.msg.time_boot_ms, AP_HAL::millis());
+}
+
+/*
+  get last named value
+ */
+void AP_Scripting::get_named_value(mavlink_named_value_float_t &msg, uint8_t &sysid, uint8_t &compid)
+{
+    WITH_SEMAPHORE(named_value.sem);
+    sysid = named_value.sysid;
+    compid = named_value.compid;
+    msg = named_value.msg;
+}
+
 AP_Scripting *AP_Scripting::_singleton = nullptr;
 
 namespace AP {

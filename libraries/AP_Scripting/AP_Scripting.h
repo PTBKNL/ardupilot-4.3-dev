@@ -23,6 +23,7 @@
 #include <AP_Filesystem/AP_Filesystem.h>
 #include <AP_HAL/I2CDevice.h>
 #include "AP_Scripting_CANSensor.h"
+#include <AP_RTC/JitterCorrection.h>
 
 #ifndef SCRIPTING_MAX_NUM_I2C_DEVICE
   #define SCRIPTING_MAX_NUM_I2C_DEVICE 4
@@ -48,6 +49,10 @@ public:
     MAV_RESULT handle_command_int_packet(const mavlink_command_int_t &packet);
 
     void handle_mission_command(const class AP_Mission::Mission_Command& cmd);
+
+    // allow scripts to receive NAMED_VALUE_FLOAT
+    void handle_named_value(uint8_t sysid, uint8_t compid, const mavlink_named_value_float_t &msg);
+    void get_named_value(mavlink_named_value_float_t &msg, uint8_t &sysid, uint8_t &compid);
 
     bool arming_checks(size_t buflen, char *buffer) const;
     
@@ -108,6 +113,14 @@ private:
     bool _init_failed;  // true if memory allocation failed
     bool _restart; // true if scripts should be restarted
     bool _stop; // true if scripts should be stopped
+
+    struct {
+        HAL_Semaphore sem;
+        JitterCorrection jitter;
+        uint8_t sysid;
+        uint8_t compid;
+        mavlink_named_value_float_t msg;
+    } named_value;
 
     static AP_Scripting *_singleton;
 

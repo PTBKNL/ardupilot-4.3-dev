@@ -540,3 +540,25 @@ int SRV_Channels_get_safety_state(lua_State *L) {
     lua_pushboolean(L, data);
     return 1;
 }
+
+int lua_get_named_value(lua_State *L) {
+    binding_argcheck(L, 0);
+
+    mavlink_named_value_float_t msg;
+    uint8_t sysid, compid;
+    AP::scripting()->get_named_value(msg, sysid, compid);
+    if (msg.time_boot_ms == 0) {
+        // no named values ever received
+        return 0;
+    }
+
+    new_uint32_t(L);
+    *check_uint32_t(L, -1) = msg.time_boot_ms;
+
+    lua_pushstring(L, msg.name);
+    lua_pushnumber(L, msg.value);
+    lua_pushnumber(L, sysid);
+    lua_pushnumber(L, compid);
+
+    return 5;
+}
