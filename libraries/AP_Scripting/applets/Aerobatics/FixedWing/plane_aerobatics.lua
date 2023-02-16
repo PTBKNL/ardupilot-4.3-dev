@@ -42,6 +42,8 @@ AEROM_STALL_PIT = bind_add_param('STALL_PIT', 24, -20)
 -- 25 was AEROM_KE_TC
 AEROM_KE_RUDD = bind_add_param('KE_RUDD', 26, 25)
 AEROM_KE_RUDD_LK = bind_add_param('KE_RUDD_LK', 27, 0.25)
+AEROM_TS_TIME = bind_add_param('TS_TIME', 28, 3.0)
+AEROM_TS_SPDMAX = bind_add_param('TS_SPDMAX', 29, 0.0)
 
 -- cope with old param values
 if AEROM_ANG_ACCEL:get() < 100 and AEROM_ANG_ACCEL:get() > 0 then
@@ -55,6 +57,7 @@ ACRO_ROLL_RATE = Parameter("ACRO_ROLL_RATE")
 ACRO_YAW_RATE = Parameter('ACRO_YAW_RATE')
 ARSPD_FBW_MIN = Parameter("ARSPD_FBW_MIN")
 SCALING_SPEED = Parameter("SCALING_SPEED")
+SYSID_THISMAV = Parameter("SYSID_THISMAV")
 
 GRAVITY_MSS = 9.80665
 
@@ -1758,6 +1761,31 @@ function calculate_rudder_offset(ahrs_quat, ahrs_gyro, airspeed_constrained)
    return rudder_ofs
 end
 
+--[[
+   handle NAMED_VALUE_FLOAT from another vehicle to sync our schedules
+--]]
+function handle_speed_adjustment()
+   gcs:send_named_float("PATHT", path_var.path_t)
+   local time_boot_ms, name, value, sysid, compid = get_named_value()
+   if not time_boot_ms then
+      return
+   end
+   if name == "PATHT" and sysid ~= SYSID_THISMAV:get() then
+      local remote_t = time_boot_ms:tofloat() * 0.001
+      local local_t = millis():tofloat() * 0.001
+      local dt = local_t - remote_t
+      local adjusted_rem_path_t = value + dt / path_var.total_time
+      local dist_err = (path_var.path_t - adjusted_rem_path_t) * path_var.total_time * path_var.target_speed
+
+      local speed_adj_max = AEROM_TS_SPDMAX:get()
+      path_var.speed_adjustment = constrain(-dist_err / AEROM_TS_TIME:get(), -speed_adj_max, speed_adj_max)
+
+      logger.write("PTHT",'SysID,RemT,LocT,PathT,RemPathT,Dt,ARPT,DE,SA','Bffffffff',
+                   sysid, remote_t, local_t, path_var.path_t, value, dt, adjusted_rem_path_t, dist_err, path_var.speed_adjustment)
+   end
+end
+
+
 path_var.count = 0
 
 function do_path()
@@ -1783,6 +1811,7 @@ function do_path()
 
       local speed = target_groundspeed()
       path_var.target_speed = speed
+      path_var.speed_adjustment = 0.0
 
       path_var.length = path:get_length() * math.abs(AEROM_PATH_SCALE:get())
 
@@ -1846,6 +1875,8 @@ function do_path()
       -- all done
       return false
    end
+
+   handle_speed_adjustment()
 
    -- airspeed, assume we don't go below min
    local airspeed_constrained = math.max(ARSPD_FBW_MIN:get(), ahrs_airspeed)
@@ -2154,7 +2185,7 @@ function do_path()
    local qnew = qchange * orientation_rel_ef_with_roll_angle
    local anticipated_pitch_rad = math.max(qnew:get_euler_pitch(), orientation_rel_ef_with_roll_angle:get_euler_pitch())
 
-   local throttle = speed_PI.update(path_var.target_speed, anticipated_pitch_rad)
+   local throttle = speed_PI.update(path_var.target_speed + path_var.speed_adjustment, anticipated_pitch_rad)
    local thr_min = AEROM_THR_MIN:get()
    if attrib.thr_boost then
       thr_min = math.max(thr_min, AEROM_THR_BOOST:get())

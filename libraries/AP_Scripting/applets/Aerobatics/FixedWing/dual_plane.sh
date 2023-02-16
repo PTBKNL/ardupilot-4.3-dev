@@ -15,7 +15,8 @@ LOC2="-35.36325764,149.16526957,585,353.8"
 }
 
 # setup multicast
-UARTA="tcp:0"
+#UARTA="tcp:0"
+UARTA="mcast:"
 
 PLANE_DEFAULTS="$ROOTDIR/Tools/autotest/models/plane-3d.parm"
 
