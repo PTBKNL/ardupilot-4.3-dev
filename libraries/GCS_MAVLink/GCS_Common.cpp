@@ -3343,6 +3343,15 @@ void GCS_MAVLINK::handle_named_value(const mavlink_message_t &msg) const
                   p.value,
                   msg.sysid,
                   msg.compid);
+
+#if AP_SCRIPTING_ENABLED
+    if (mavlink_system.sysid != msg.sysid) {
+        AP_Scripting *scripting = AP_Scripting::get_singleton();
+        if (scripting != nullptr) {
+            return scripting->handle_named_value(msg.sysid, msg.compid, p);
+        }
+    }
+#endif // AP_SCRIPTING_ENABLED
 }
 
 void GCS_MAVLINK::handle_system_time_message(const mavlink_message_t &msg)
