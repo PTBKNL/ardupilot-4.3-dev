@@ -1702,7 +1702,7 @@ end
 
 -- log a pose from position and quaternion attitude
 function log_pose(logname, pos, quat)
-   logger.write(logname, 'px,py,pz,q1,q2,q3,q4,r,p,y','ffffffffff',
+   logger.write(logname, 'px,py,pz,q1,q2,q3,q4,r,p,y', 'ffffffffff',
                 pos:x(),
                 pos:y(),
                 pos:z(),
@@ -1710,6 +1710,23 @@ function log_pose(logname, pos, quat)
                 quat:q2(),
                 quat:q3(),
                 quat:q4(),
+                math.deg(quat:get_euler_roll()),
+                math.deg(quat:get_euler_pitch()),
+                math.deg(quat:get_euler_yaw()))
+end
+
+
+function log_position(logname, loc, quat)
+   local utc_s, utc_us = utc_micros()
+   logger.write(logname, 'I,TSec,TUSec,Lat,Lon,Alt,R,P,Y',
+                'BIILLffff',
+                '#--DU----',
+                '---GG----',
+                SYSID_THISMAV:get(),
+                utc_s, utc_us,
+                loc:lat(),
+                loc:lng(),
+                loc:alt()*0.01,
                 math.deg(quat:get_euler_roll()),
                 math.deg(quat:get_euler_pitch()),
                 math.deg(quat:get_euler_yaw()))
@@ -2155,6 +2172,7 @@ function do_path()
    --]]
    log_pose('POSM', current_measured_pos_ef, ahrs_quat:inverse())
    log_pose('POST', p1, orientation_rel_ef_with_roll_angle)
+   log_position("VEH", ahrs:get_location(), ahrs_quat:inverse())
 
    logger.write('AETM', 'T,Terr,QCt,Adt','ffff',
                 path_var.path_t,
