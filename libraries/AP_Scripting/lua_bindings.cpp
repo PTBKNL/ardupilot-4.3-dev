@@ -37,6 +37,25 @@ int lua_micros(lua_State *L) {
     return 1;
 }
 
+// UTC time, as 2 uint32_t, first is in seconds, 2nd microseconds
+int lua_utc_micros(lua_State *L) {
+    binding_argcheck(L, 0);
+    uint64_t utc_usec;
+    if (!AP::rtc().get_utc_usec(utc_usec)) {
+        return 0;
+    }
+    const uint32_t utc_s = utc_usec / 1000000ULL;
+    const uint32_t utc_us32 = utc_usec % 1000000ULL;
+
+    new_uint32_t(L);
+    *check_uint32_t(L, -1) = utc_s;
+
+    new_uint32_t(L);
+    *check_uint32_t(L, -1) = utc_us32;
+
+    return 2;
+}
+
 int lua_mission_receive(lua_State *L) {
     binding_argcheck(L, 0);
 

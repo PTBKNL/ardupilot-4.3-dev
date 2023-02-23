@@ -650,6 +650,7 @@ singleton i2c manual get_device lua_get_i2c_device 4
 
 global manual millis lua_millis 0
 global manual micros lua_micros 0
+global manual utc_micros lua_utc_micros 0
 global manual mission_receive lua_mission_receive 0
 
 userdata uint32_t creation lua_new_uint32_t 1
