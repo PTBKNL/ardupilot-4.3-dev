@@ -61,6 +61,8 @@ SYSID_THISMAV = Parameter("SYSID_THISMAV")
 
 GRAVITY_MSS = 9.80665
 
+local NAV_SCRIPT_TIME = 42702
+
 --[[
    list of attributes that can be added to a path element
 --]]
@@ -2236,6 +2238,8 @@ function PathFunction(fn, name)
    return self
 end
 
+local last_preload = nil
+
 local command_table = {}
 command_table[1] = PathFunction(figure_eight, "Figure Eight")
 command_table[2] = PathFunction(loop, "Loop")
@@ -2437,10 +2441,33 @@ function PathTask(fn, name, id, initial_yaw_deg, arg1, arg2, arg3, arg4)
    return self
 end
 
+--[[
+   see if we should prepare for an upcoming trick
+--]]
+function check_preload_trick()
+   local idx = mission:get_current_nav_index()
+   if idx == last_preload then
+      return
+   end
+   last_preload = idx
+   local m = mission:get_item(idx+1)
+   if not m then
+      return
+   end
+   if m:command() ~= NAV_SCRIPT_TIME then
+      return
+   end
+   cmdid = m:param1()
+   if command_table[cmdid] == nil then
+      load_trick(cmdid)
+   end
+end
+
 -- see if an auto mission item needs to be run
 function check_auto_mission()
    id, cmd, arg1, arg2, arg3, arg4 = vehicle:nav_script_time()
    if not id then
+      check_preload_trick()
       return
    end
    if id ~= last_id then
